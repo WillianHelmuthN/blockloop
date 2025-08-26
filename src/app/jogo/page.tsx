@@ -61,8 +61,11 @@ function isHit(t: number, start: number, end: number): boolean {
 export default function Page() {
   // Dimensões do tabuleiro (responsivo simples)
   // Usar estado + efeito pós-mount evita mismatch entre SSR (sem window) e cliente.
-  const [boardW, setBoardW] = useState(360); // valor estável igual ao SSR
-  const [boardH, setBoardH] = useState(360 * 0.66);
+  const [boardW, setBoardW] = useState(360); // largura lógica alvo
+  const [boardH, setBoardH] = useState(360 * 0.66); // altura lógica alvo
+  const [displayW, setDisplayW] = useState(360); // largura realmente usada após limites (ex: 92vw)
+  const [displayH, setDisplayH] = useState(360 * 0.66);
+  const outerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     function compute() {
@@ -73,6 +76,9 @@ export default function Page() {
         : clamp(vw * 0.6, 560, 680);
       setBoardW(size);
       setBoardH(size * 0.66);
+      const limited = Math.min(size, window.innerWidth * 0.92);
+      setDisplayW(limited);
+      setDisplayH(limited * 0.66);
     }
     compute();
     window.addEventListener("resize", compute);
@@ -221,7 +227,10 @@ export default function Page() {
         padding: 16,
       }}
     >
-      <div style={{ width: boardW, maxWidth: "92vw" }}>
+      <div
+        ref={outerRef}
+        style={{ width: "100%", maxWidth: boardW, paddingInline: 0 }}
+      >
         <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 8 }}>
           Block Loop
         </h1>
@@ -264,15 +273,16 @@ export default function Page() {
           tabIndex={0}
           role="button"
           aria-label="Área do jogo. Clique ou toque para jogar."
-          onClick={handleAction}
-          onTouchStart={(e) => {
+          // Usar Pointer Events evita contagem dupla (touch gera click sintetizado)
+          onPointerDown={(e) => {
+            if (!e.isPrimary) return;
             e.preventDefault();
             handleAction();
           }}
           style={{
             position: "relative",
-            width: boardW,
-            height: boardH,
+            width: displayW,
+            height: displayH,
             borderRadius: 16,
             border: "2px solid #0ea5e9",
             outline: "none",
@@ -299,7 +309,7 @@ export default function Page() {
           />
 
           {/* Zona de acerto — desenhada como glow ao longo do perímetro via múltiplos gradientes */}
-          <ZoneOverlay w={boardW} h={boardH} inset={inset} zone={zone} />
+          <ZoneOverlay w={displayW} h={displayH} inset={inset} zone={zone} />
 
           {/* Bloco */}
           <div
