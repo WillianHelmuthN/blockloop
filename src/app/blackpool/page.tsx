@@ -280,7 +280,7 @@ export default function Page() {
                   padding: "6px 10px",
                   borderRadius: 10,
                   border: "1px solid #e2e8f0",
-                  fontSize: 14
+                  fontSize: 14,
                 }}
               >
                 {Array.from(
@@ -464,18 +464,10 @@ export default function Page() {
                   gap: 14,
                 }}
               >
-                <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>
-                  Nível {score} alcançado!
+                <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, textAlign: "center", paddingBottom: 10 }}>
+                  Você já ganhou {currentStake * (multiplierFor(score) || 0)}{" "}
+                  reais!
                 </h2>
-                <p style={{ fontSize: 14, lineHeight: 1.4 }}>
-                  Multiplicador disponível:{" "}
-                  <strong>{multiplierFor(score)}x</strong>
-                  {score === 40 && " (limite máximo)"}
-                </p>
-                <p style={{ fontSize: 13, opacity: 0.75 }}>
-                  Stake inicial: {currentStake} · Prêmio potencial:{" "}
-                  {currentStake * (multiplierFor(score) || 0)}
-                </p>
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                   <button
                     onClick={handleCashOut}
