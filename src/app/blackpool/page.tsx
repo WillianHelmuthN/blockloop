@@ -4,12 +4,14 @@ import React, { useEffect, useRef, useState } from "react";
 import { clamp, randRange, tToXY, isHit } from "./lib/geometry";
 import ZoneOverlay from "./components/ZoneOverlay";
 import { usePersistentState } from "./hooks/usePersistentState";
+import { useUserPoints, awardScorePoints } from "../providers/UserPointsProvider";
 
 type GameState = "idle" | "playing" | "gameover";
 
 // utilitários movidos para ./lib/geometry
 
 export default function Page() {
+  const { user, login, addPoints } = useUserPoints();
   // Dimensões do tabuleiro (responsivo simples)
   // Usar estado + efeito pós-mount evita mismatch entre SSR (sem window) e cliente.
   const [boardW, setBoardW] = useState(360); // largura lógica alvo
@@ -126,6 +128,11 @@ export default function Page() {
   function onMiss() {
     setState("gameover");
     setBest((b) => Math.max(b, score));
+    // Converter score em pontos globais e adicionar se for maior que 0
+    const gain = awardScorePoints(score);
+    if (gain > 0) {
+      addPoints(gain);
+    }
   }
 
   function handleAction() {
@@ -155,6 +162,32 @@ export default function Page() {
   // Renderizamos a zona como um traço “fluorescente” no perímetro com CSS gradient
   // usando um pseudo elemento posicionando overlay + mask linear.
   const zoneLabel = `${Math.round(((zone.end - zone.start + 1) % 1) * 100)}%`;
+
+  // Gate de login simples: se não há user, mostrar tela para inserir nome
+  if (!user) {
+    return (
+      <main
+        style={{
+          minHeight: "100dvh",
+          display: "grid",
+          placeItems: "center",
+          fontFamily: "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto",
+          padding: 16,
+        }}
+      >
+        <div style={{ width: "100%", maxWidth: 420 }}>
+          <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 12 }}>
+            Black Pool
+          </h1>
+          <p style={{ fontSize: 14, opacity: 0.75, marginBottom: 16 }}>
+            Escolha um nome para começar. Você receberá <strong>100 pontos</strong> iniciais
+            para jogar em toda a plataforma (MVP local).
+          </p>
+          <LoginForm onLogin={login} />
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main
@@ -202,6 +235,8 @@ export default function Page() {
               : "Iniciar"}
           </button>
           <div style={{ fontWeight: 600 }}>Score: {score}</div>
+          <div style={{ fontWeight: 600 }}>Saldo: {user.points}</div>
+          <div style={{ opacity: 0.8 }}>Jogador: {user.name}</div>
           <div style={{ opacity: 0.8 }}>Best: {best}</div>
           <div style={{ opacity: 0.8 }}>Velocidade: {speed.toFixed(2)} rps</div>
           <div style={{ opacity: 0.8 }}>Zona: {zoneLabel}</div>
@@ -310,3 +345,61 @@ export default function Page() {
 }
 
 // ZoneOverlay agora importado de components/ZoneOverlay
+
+// Formulário inline para escolher nome
+function LoginForm({ onLogin }: { onLogin: (name: string) => void }) {
+  const [name, setName] = useState("");
+  const [touched, setTouched] = useState(false);
+  const valid = name.trim().length >= 3;
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        setTouched(true);
+        if (!valid) return;
+        onLogin(name.trim());
+      }}
+      style={{ display: "flex", flexDirection: "column", gap: 12 }}
+    >
+      <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: 0.5 }}>
+          Nome do jogador
+        </span>
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onBlur={() => setTouched(true)}
+          placeholder="Ex: AstroPlayer"
+          maxLength={40}
+          style={{
+            padding: "10px 14px",
+            borderRadius: 10,
+            border: "1px solid #cbd5e1",
+            fontSize: 14,
+            outline: "none",
+          }}
+        />
+      </label>
+      {touched && !valid && (
+        <div style={{ fontSize: 12, color: "#dc2626" }}>
+          Use pelo menos 3 caracteres.
+        </div>
+      )}
+      <button
+        type="submit"
+        disabled={!valid}
+        style={{
+          padding: "12px 16px",
+          borderRadius: 12,
+          border: "none",
+          background: valid ? "#0ea5e9" : "#7dd3fc",
+          color: "white",
+          fontWeight: 600,
+          cursor: valid ? "pointer" : "not-allowed",
+        }}
+      >
+        Entrar
+      </button>
+    </form>
+  );
+}
