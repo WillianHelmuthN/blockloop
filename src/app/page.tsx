@@ -27,7 +27,7 @@ export default function Home() {
               Roadmap
             </a>
             <Link
-              href="/jogo"
+              href="/blackpool"
               className="hover:text-sky-600 dark:hover:text-sky-400 transition-colors"
             >
               Jogar
@@ -54,7 +54,7 @@ export default function Home() {
         </p>
         <div className="flex flex-col sm:flex-row gap-4">
           <Link
-            href="/jogo"
+            href="/blackpool"
             className="px-6 py-3 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-semibold shadow-md shadow-sky-600/30 transition-colors"
           >
             Jogar Agora (MVP)
