@@ -280,8 +280,7 @@ export default function Page() {
                   padding: "6px 10px",
                   borderRadius: 10,
                   border: "1px solid #e2e8f0",
-                  fontSize: 14,
-                  background: "#fff",
+                  fontSize: 14
                 }}
               >
                 {Array.from(
@@ -311,7 +310,6 @@ export default function Page() {
               padding: "8px 14px",
               borderRadius: 12,
               border: "1px solid #e2e8f0",
-              background: state === "playing" ? "#fee2e2" : "#e0f2fe",
               opacity:
                 state === "idle" && (user.points < 10 || stake > user.points)
                   ? 0.5
@@ -329,7 +327,7 @@ export default function Page() {
               ? "Reiniciar"
               : "Iniciar"}
           </button>
-          <div style={{ fontWeight: 600 }}>Score: {score}</div>
+          <div style={{ fontWeight: 600 }}>Nível: {score}</div>
           <div style={{ fontWeight: 600 }}>Saldo: {user.points}</div>
           <div style={{ opacity: 0.8 }}>Jogador: {user.name}</div>
           <div style={{ opacity: 0.8 }}>Best: {best}</div>
