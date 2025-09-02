@@ -171,7 +171,7 @@ export default function Page() {
         style={{ width: "100%", maxWidth: boardW, paddingInline: 0 }}
       >
         <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 8 }}>
-          Block Loop
+          Black Pool
         </h1>
 
         <div
