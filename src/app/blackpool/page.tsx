@@ -4,14 +4,19 @@ import React, { useEffect, useRef, useState } from "react";
 import { clamp, randRange, tToXY, isHit } from "./lib/geometry";
 import ZoneOverlay from "./components/ZoneOverlay";
 import { usePersistentState } from "./hooks/usePersistentState";
-import { useUserPoints, awardScorePoints } from "../providers/UserPointsProvider";
+import { useUserPoints } from "../providers/UserPointsProvider";
 
-type GameState = "idle" | "playing" | "gameover";
+type GameState = "idle" | "playing" | "paused" | "gameover";
 
 // utilitários movidos para ./lib/geometry
 
 export default function Page() {
   const { user, login, addPoints } = useUserPoints();
+
+  // Aposta atual (valor colocado na partida) e estado
+  const [stake, setStake] = useState<number>(10);
+  const [currentStake, setCurrentStake] = useState<number | null>(null); // stake efetivo dessa rodada
+  const [showMilestoneModal, setShowMilestoneModal] = useState(false);
   // Dimensões do tabuleiro (responsivo simples)
   // Usar estado + efeito pós-mount evita mismatch entre SSR (sem window) e cliente.
   const [boardW, setBoardW] = useState(360); // largura lógica alvo
@@ -104,11 +109,18 @@ export default function Page() {
   });
 
   function startGame() {
+    if (!user) return;
+    const s = Math.min(stake, user.points);
+    if (s <= 0) return;
+    // debitar stake do saldo global
+    addPoints(-s);
+    setCurrentStake(s);
     setScore(0);
     setSpeed(0.25);
     randomizeZone();
     setT(Math.random()); // posição inicial aleatória
     setState("playing");
+    setShowMilestoneModal(false);
     boardRef.current?.focus();
   }
 
@@ -119,8 +131,16 @@ export default function Page() {
   }
 
   function onHit() {
-    // aumentar score/velocidade, mover zona
-    setScore((s) => s + 1);
+    setScore((prevScore) => {
+      const newScore = prevScore + 1;
+      // milestones a cada 10 até 40
+      if (newScore % 10 === 0 && newScore <= 40) {
+        // pausa para decidir cashout / continuar
+        setState("paused");
+        setShowMilestoneModal(true);
+      }
+      return newScore;
+    });
     setSpeed((v) => clamp(v * 1.08, 0, 2.0));
     randomizeZone();
   }
@@ -128,11 +148,7 @@ export default function Page() {
   function onMiss() {
     setState("gameover");
     setBest((b) => Math.max(b, score));
-    // Converter score em pontos globais e adicionar se for maior que 0
-    const gain = awardScorePoints(score);
-    if (gain > 0) {
-      addPoints(gain);
-    }
+    // Derrota: jogador perde stake (já debitada); não ganha nada.
   }
 
   function handleAction() {
@@ -146,6 +162,10 @@ export default function Page() {
       } else {
         onMiss();
       }
+      return;
+    }
+    if (state === "paused") {
+      // Ignora clique direto; o modal com botões decide.
       return;
     }
     if (state === "gameover") {
@@ -171,7 +191,8 @@ export default function Page() {
           minHeight: "100dvh",
           display: "grid",
           placeItems: "center",
-          fontFamily: "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto",
+          fontFamily:
+            "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto",
           padding: 16,
         }}
       >
@@ -180,13 +201,45 @@ export default function Page() {
             Black Pool
           </h1>
           <p style={{ fontSize: 14, opacity: 0.75, marginBottom: 16 }}>
-            Escolha um nome para começar. Você receberá <strong>100 pontos</strong> iniciais
-            para jogar em toda a plataforma (MVP local).
+            Escolha um nome para começar. Você receberá{" "}
+            <strong>100 pontos</strong> iniciais para jogar em toda a plataforma
+            (MVP local).
           </p>
           <LoginForm onLogin={login} />
         </div>
       </main>
     );
+  }
+
+  // Cálculo do multiplicador (milestone atual)
+  function multiplierFor(score: number): number | null {
+    if (score < 10) return null;
+    if (score === 10) return 1;
+    if (score === 20) return 2;
+    if (score === 30) return 5;
+    if (score === 40) return 10;
+    return null; // fora das faixas definidas
+  }
+
+  function canContinue(score: number) {
+    return score < 40; // 40 é limite
+  }
+
+  function handleCashOut() {
+    if (currentStake == null) return;
+    const multi = multiplierFor(score);
+    if (multi == null) return;
+    const prize = currentStake * multi;
+    addPoints(prize); // credita prêmio
+    setState("gameover");
+    setShowMilestoneModal(false);
+    setBest((b) => Math.max(b, score));
+  }
+
+  function handleContinue() {
+    if (!canContinue(score)) return;
+    setShowMilestoneModal(false);
+    setState("playing");
   }
 
   return (
@@ -216,15 +269,57 @@ export default function Page() {
             flexWrap: "wrap",
           }}
         >
+          {/* Controle de stake (somente antes de iniciar) */}
+          {state === "idle" && (
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <label style={{ fontSize: 12, fontWeight: 600 }}>Stake:</label>
+              <select
+                value={stake}
+                onChange={(e) => setStake(Number(e.target.value))}
+                style={{
+                  padding: "6px 10px",
+                  borderRadius: 10,
+                  border: "1px solid #e2e8f0",
+                  fontSize: 14,
+                  background: "#fff",
+                }}
+              >
+                {Array.from(
+                  { length: Math.min(15, Math.floor(user.points / 10)) },
+                  (_, i) => (i + 1) * 10
+                ).map((v) => (
+                  <option key={v} value={v}>
+                    {v}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <button
             onClick={() => (state === "playing" ? onMiss() : startGame())}
-            aria-label={state === "playing" ? "Desistir" : "Iniciar jogo"}
+            aria-label={
+              state === "playing"
+                ? "Desistir"
+                : state === "gameover"
+                ? "Reiniciar"
+                : "Iniciar jogo"
+            }
+            disabled={
+              state === "idle" && (user.points < 10 || stake > user.points)
+            }
             style={{
               padding: "8px 14px",
               borderRadius: 12,
               border: "1px solid #e2e8f0",
               background: state === "playing" ? "#fee2e2" : "#e0f2fe",
-              cursor: "pointer",
+              opacity:
+                state === "idle" && (user.points < 10 || stake > user.points)
+                  ? 0.5
+                  : 1,
+              cursor:
+                state === "idle" && (user.points < 10 || stake > user.points)
+                  ? "not-allowed"
+                  : "pointer",
               fontWeight: 600,
             }}
           >
@@ -304,7 +399,7 @@ export default function Page() {
           />
 
           {/* Instruções overlay */}
-          {state !== "playing" && (
+          {state !== "playing" && !showMilestoneModal && (
             <div
               style={{
                 position: "absolute",
@@ -320,7 +415,9 @@ export default function Page() {
               <div>
                 <p style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>
                   {state === "idle"
-                    ? "Clique/Toque ou pressione Space para iniciar"
+                    ? "Escolha a stake e clique para iniciar"
+                    : state === "paused"
+                    ? "Pausado"
                     : "Game Over"}
                 </p>
                 <p style={{ opacity: 0.8 }}>
@@ -331,13 +428,110 @@ export default function Page() {
                     Score: {score} · Best: {best}
                   </p>
                 )}
+                {state === "idle" && (
+                  <p style={{ marginTop: 8, fontSize: 12, opacity: 0.7 }}>
+                    Stake define o potencial de prêmio nos níveis 10/20/30/40.
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Modal de Milestone */}
+          {showMilestoneModal && currentStake != null && (
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                background: "rgba(0,0,0,0.5)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: 24,
+              }}
+              role="dialog"
+              aria-modal="true"
+            >
+              <div
+                style={{
+                  background: "white",
+                  color: "#0f172a",
+                  padding: 24,
+                  borderRadius: 16,
+                  width: "100%",
+                  maxWidth: 380,
+                  boxShadow: "0 10px 40px -5px rgba(0,0,0,0.25)",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 14,
+                }}
+              >
+                <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>
+                  Nível {score} alcançado!
+                </h2>
+                <p style={{ fontSize: 14, lineHeight: 1.4 }}>
+                  Multiplicador disponível:{" "}
+                  <strong>{multiplierFor(score)}x</strong>
+                  {score === 40 && " (limite máximo)"}
+                </p>
+                <p style={{ fontSize: 13, opacity: 0.75 }}>
+                  Stake inicial: {currentStake} · Prêmio potencial:{" "}
+                  {currentStake * (multiplierFor(score) || 0)}
+                </p>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <button
+                    onClick={handleCashOut}
+                    style={{
+                      flex: 1,
+                      padding: "10px 14px",
+                      borderRadius: 12,
+                      border: "1px solid #059669",
+                      background: "#10b981",
+                      color: "white",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Sacar {multiplierFor(score)}x
+                  </button>
+                  {canContinue(score) && (
+                    <button
+                      onClick={handleContinue}
+                      style={{
+                        flex: 1,
+                        padding: "10px 14px",
+                        borderRadius: 12,
+                        border: "1px solid #0369a1",
+                        background: "#0ea5e9",
+                        color: "white",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                      }}
+                    >
+                      Continuar
+                    </button>
+                  )}
+                </div>
+                {!canContinue(score) && (
+                  <p
+                    style={{ fontSize: 12, opacity: 0.7, textAlign: "center" }}
+                  >
+                    Você atingiu o limite máximo. Saque para finalizar.
+                  </p>
+                )}
+                {score > 10 && canContinue(score) && (
+                  <p style={{ fontSize: 11, opacity: 0.6, marginTop: 4 }}>
+                    Atenção: se errar antes do próximo nível você perde a stake.
+                  </p>
+                )}
               </div>
             </div>
           )}
         </div>
 
         <p style={{ marginTop: 10, fontSize: 12, opacity: 0.7 }}>
-          Dica: também funciona com a tecla <kbd>Space</kbd>.
+          Dica: também funciona com a tecla <kbd>Space</kbd>. Cashout nos níveis
+          10 · 20 · 30 · 40.
         </p>
       </div>
     </main>
