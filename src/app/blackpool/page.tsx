@@ -181,8 +181,6 @@ export default function Page() {
   // Converter zona (t) para um segmento visual nas 4 arestas — simplificação:
   // Renderizamos a zona como um traço “fluorescente” no perímetro com CSS gradient
   // usando um pseudo elemento posicionando overlay + mask linear.
-  const zoneLabel = `${Math.round(((zone.end - zone.start + 1) % 1) * 100)}%`;
-
   // Gate de login simples: se não há user, mostrar tela para inserir nome
   if (!user) {
     return (
@@ -328,11 +326,25 @@ export default function Page() {
               : "Iniciar"}
           </button>
           <div style={{ fontWeight: 600 }}>Nível: {score}</div>
-          <div style={{ fontWeight: 600 }}>Saldo: {user.points}</div>
+          <div style={{ fontWeight: 600 }}>
+            {(() => {
+              if (!user) return null; // safe guard
+              if (currentStake == null) {
+                return <>Saldo: {user.points}</>;
+              }
+              const valorInicial = currentStake; // stake colocada
+              const premioAtual = currentStake * (multiplierFor(score) || 0); // prêmio só existe nos milestones
+              const saldoGlobal = user.points; // saldo restante global
+              return (
+                <>
+                  Valor inicial: {valorInicial} · Valor atual: {premioAtual} ·
+                  Saldo: {saldoGlobal}
+                </>
+              );
+            })()}
+          </div>
           <div style={{ opacity: 0.8 }}>Jogador: {user.name}</div>
           <div style={{ opacity: 0.8 }}>Best: {best}</div>
-          <div style={{ opacity: 0.8 }}>Velocidade: {speed.toFixed(2)} rps</div>
-          <div style={{ opacity: 0.8 }}>Zona: {zoneLabel}</div>
         </div>
 
         <div
@@ -474,7 +486,7 @@ export default function Page() {
                   }}
                 >
                   Você já ganhou {currentStake * (multiplierFor(score) || 0)}{" "}
-                  reais!
+                  pontos!
                 </h2>
                 <p style={{ fontSize: 13, opacity: 0.75, textAlign: "center" }}>
                   Valor inicial: {currentStake} · Prêmio alcançado:{" "}
@@ -532,7 +544,7 @@ export default function Page() {
         </div>
 
         <p style={{ marginTop: 10, fontSize: 12, opacity: 0.7 }}>
-          Dica: também funciona com a tecla <kbd>Space</kbd>. Cashout nos níveis
+          Dica: também funciona com a tecla <kbd>Space</kbd>. Prêmios nos níveis
           10 · 20 · 30 · 40.
         </p>
       </div>
