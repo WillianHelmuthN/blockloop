@@ -272,7 +272,7 @@ export default function Page() {
           {/* Controle de stake (somente antes de iniciar) */}
           {state === "idle" && (
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <label style={{ fontSize: 12, fontWeight: 600 }}>Stake:</label>
+              <label style={{ fontSize: 12, fontWeight: 600 }}>Valor:</label>
               <select
                 value={stake}
                 onChange={(e) => setStake(Number(e.target.value))}
@@ -413,7 +413,7 @@ export default function Page() {
               <div>
                 <p style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>
                   {state === "idle"
-                    ? "Escolha a stake e clique para iniciar"
+                    ? "Escolha o Valor e clique para iniciar"
                     : state === "paused"
                     ? "Pausado"
                     : "Game Over"}
@@ -464,10 +464,22 @@ export default function Page() {
                   gap: 14,
                 }}
               >
-                <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, textAlign: "center", paddingBottom: 10 }}>
+                <h2
+                  style={{
+                    fontSize: 18,
+                    fontWeight: 700,
+                    margin: 0,
+                    textAlign: "center",
+                    paddingBottom: 10,
+                  }}
+                >
                   Você já ganhou {currentStake * (multiplierFor(score) || 0)}{" "}
                   reais!
                 </h2>
+                <p style={{ fontSize: 13, opacity: 0.75, textAlign: "center" }}>
+                  Valor inicial: {currentStake} · Prêmio alcançado:{" "}
+                  {currentStake * (multiplierFor(score) || 0)}
+                </p>
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                   <button
                     onClick={handleCashOut}
