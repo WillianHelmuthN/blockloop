@@ -451,13 +451,16 @@ export default function Page() {
           {showMilestoneModal && currentStake != null && (
             <div
               style={{
-                position: "absolute",
+                position: "fixed",
                 inset: 0,
-                background: "rgba(0,0,0,0.5)",
+                background: "rgba(0,0,0,0.55)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                padding: 24,
+                padding: 16,
+                zIndex: 1000,
+                backdropFilter: "blur(2px)",
+                WebkitBackdropFilter: "blur(2px)",
               }}
               role="dialog"
               aria-modal="true"
@@ -466,19 +469,21 @@ export default function Page() {
                 style={{
                   background: "white",
                   color: "#0f172a",
-                  padding: 24,
-                  borderRadius: 16,
+                  padding: 20,
+                  borderRadius: 18,
                   width: "100%",
-                  maxWidth: 380,
+                  maxWidth: 420,
                   boxShadow: "0 10px 40px -5px rgba(0,0,0,0.25)",
                   display: "flex",
                   flexDirection: "column",
                   gap: 14,
+                  maxHeight: "90vh",
+                  overflowY: "auto",
                 }}
               >
                 <h2
                   style={{
-                    fontSize: 18,
+                    fontSize: 20,
                     fontWeight: 700,
                     margin: 0,
                     textAlign: "center",
@@ -492,12 +497,14 @@ export default function Page() {
                   Valor inicial: {currentStake} · Prêmio alcançado:{" "}
                   {currentStake * (multiplierFor(score) || 0)}
                 </p>
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <div
+                  style={{ display: "flex", flexDirection: "column", gap: 12 }}
+                >
                   <button
                     onClick={handleCashOut}
                     style={{
-                      flex: 1,
-                      padding: "10px 14px",
+                      width: "100%",
+                      padding: "14px 18px",
                       borderRadius: 12,
                       border: "1px solid #059669",
                       background: "#10b981",
@@ -509,21 +516,46 @@ export default function Page() {
                     Sacar {multiplierFor(score)}x
                   </button>
                   {canContinue(score) && (
-                    <button
-                      onClick={handleContinue}
-                      style={{
-                        flex: 1,
-                        padding: "10px 14px",
-                        borderRadius: 12,
-                        border: "1px solid #0369a1",
-                        background: "#0ea5e9",
-                        color: "white",
-                        fontWeight: 600,
-                        cursor: "pointer",
-                      }}
-                    >
-                      Continuar
-                    </button>
+                    <>
+                      <div
+                        style={{
+                          textAlign: "center",
+                          fontSize: 12,
+                          fontWeight: 600,
+                          letterSpacing: 1,
+                          opacity: 0.55,
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        ou
+                      </div>
+                      <button
+                        onClick={handleContinue}
+                        style={{
+                          width: "100%",
+                          padding: "14px 18px",
+                          borderRadius: 12,
+                          border: "1px solid #0369a1",
+                          background: "#0ea5e9",
+                          color: "white",
+                          fontWeight: 600,
+                          cursor: "pointer",
+                        }}
+                      >
+                        Continuar
+                      </button>
+                      <div
+                        style={{
+                          textAlign: "center",
+                          fontSize: 12,
+                          opacity: 0.75,
+                          marginTop: -2,
+                          fontWeight: 500,
+                        }}
+                      >
+                        Para multiplicar seu Prêmio
+                      </div>
+                    </>
                   )}
                 </div>
                 {!canContinue(score) && (
