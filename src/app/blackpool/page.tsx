@@ -17,6 +17,7 @@ export default function Page() {
   const [stake, setStake] = useState<number>(10);
   const [currentStake, setCurrentStake] = useState<number | null>(null); // stake efetivo dessa rodada
   const [showMilestoneModal, setShowMilestoneModal] = useState(false);
+  const [showStakeModal, setShowStakeModal] = useState(false); // novo modal para escolher valor antes de iniciar
   // Dimensões do tabuleiro (responsivo simples)
   // Usar estado + efeito pós-mount evita mismatch entre SSR (sem window) e cliente.
   const [boardW, setBoardW] = useState(360); // largura lógica alvo
@@ -121,6 +122,7 @@ export default function Page() {
     setT(Math.random()); // posição inicial aleatória
     setState("playing");
     setShowMilestoneModal(false);
+  setShowStakeModal(false);
     boardRef.current?.focus();
   }
 
@@ -153,7 +155,12 @@ export default function Page() {
 
   function handleAction() {
     if (state === "idle") {
-      startGame();
+      // Primeiro exibe modal de seleção de valor se ainda não estiver aberto
+      if (!showStakeModal) {
+        setShowStakeModal(true);
+        return;
+      }
+      // Se modal já está aberto, não inicia com Space; usuário deve confirmar.
       return;
     }
     if (state === "playing") {
@@ -267,63 +274,45 @@ export default function Page() {
             flexWrap: "wrap",
           }}
         >
-          {/* Controle de stake (somente antes de iniciar) */}
-          {state === "idle" && (
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <label style={{ fontSize: 12, fontWeight: 600 }}>Valor:</label>
-              <select
-                value={stake}
-                onChange={(e) => setStake(Number(e.target.value))}
-                style={{
-                  padding: "6px 10px",
-                  borderRadius: 10,
-                  border: "1px solid #e2e8f0",
-                  fontSize: 14,
-                }}
-              >
-                {Array.from(
-                  { length: Math.min(15, Math.floor(user.points / 10)) },
-                  (_, i) => (i + 1) * 10
-                ).map((v) => (
-                  <option key={v} value={v}>
-                    {v}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
           <button
-            onClick={() => (state === "playing" ? onMiss() : startGame())}
+            onClick={() => {
+              if (state === "playing") return onMiss();
+              if (state === "idle") return setShowStakeModal(true);
+              if (state === "gameover") {
+                // Reiniciar fluxo: voltar ao idle para escolher novo stake
+                setState("idle");
+                setShowStakeModal(true);
+              }
+            }}
             aria-label={
               state === "playing"
                 ? "Desistir"
                 : state === "gameover"
-                ? "Reiniciar"
-                : "Iniciar jogo"
+                ? "Selecionar valor para nova partida"
+                : "Selecionar valor e iniciar"
             }
             disabled={
-              state === "idle" && (user.points < 10 || stake > user.points)
+              (state === "idle" && user.points < 10) ||
+              (state === "gameover" && user.points < 10)
             }
             style={{
               padding: "8px 14px",
               borderRadius: 12,
               border: "1px solid #e2e8f0",
               opacity:
-                state === "idle" && (user.points < 10 || stake > user.points)
-                  ? 0.5
-                  : 1,
+                (state === "idle" && user.points < 10) ||
+                (state === "gameover" && user.points < 10)
+                  ? 0.5 : 1,
               cursor:
-                state === "idle" && (user.points < 10 || stake > user.points)
-                  ? "not-allowed"
-                  : "pointer",
+                (state === "idle" && user.points < 10) ||
+                (state === "gameover" && user.points < 10)
+                  ? "not-allowed" : "pointer",
               fontWeight: 600,
             }}
           >
             {state === "playing"
               ? "Desistir"
-              : state === "gameover"
-              ? "Reiniciar"
-              : "Iniciar"}
+              : state === "gameover" ? "Nova Partida" : "Jogar"}
           </button>
           <div style={{ fontWeight: 600 }}>Nível: {score}</div>
           <div style={{ fontWeight: 600 }}>
@@ -425,7 +414,7 @@ export default function Page() {
               <div>
                 <p style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>
                   {state === "idle"
-                    ? "Escolha o Valor e clique para iniciar"
+                    ? "Clique para escolher o valor e iniciar"
                     : state === "paused"
                     ? "Pausado"
                     : "Game Over"}
@@ -440,7 +429,7 @@ export default function Page() {
                 )}
                 {state === "idle" && (
                   <p style={{ marginTop: 8, fontSize: 12, opacity: 0.7 }}>
-                    Stake define o potencial de prêmio nos níveis 10/20/30/40.
+                    O valor define o potencial de prêmio nos níveis 10/20/30/40.
                   </p>
                 )}
               </div>
@@ -569,6 +558,184 @@ export default function Page() {
                   <p style={{ fontSize: 11, opacity: 0.6, marginTop: 4 }}>
                     Atenção: se errar antes do próximo nível você perde a stake.
                   </p>
+                )}
+              </div>
+            </div>
+          )}
+          {/* Modal de seleção de valor antes de iniciar */}
+          {showStakeModal && state === "idle" && (
+            <div
+              style={{
+                position: "fixed",
+                inset: 0,
+                background: "rgba(0,0,0,0.55)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: 16,
+                zIndex: 900,
+                backdropFilter: "blur(2px)",
+                WebkitBackdropFilter: "blur(2px)",
+              }}
+              role="dialog"
+              aria-modal="true"
+            >
+              <div
+                style={{
+                  background: "white",
+                  color: "#0f172a",
+                  padding: 22,
+                  borderRadius: 20,
+                  width: "100%",
+                  maxWidth: 420,
+                  boxShadow: "0 10px 40px -5px rgba(0,0,0,0.25)",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 18,
+                  maxHeight: "90vh",
+                  overflowY: "auto",
+                }}
+              >
+                <div style={{ textAlign: "center" }}>
+                  <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>
+                    Escolha o valor da partida
+                  </h2>
+                  <p style={{ fontSize: 12, opacity: 0.7, marginTop: 6 }}>
+                    Saldo disponível: {user.points} ponto(s)
+                  </p>
+                </div>
+                {user.points < 10 ? (
+                  <p style={{ fontSize: 13, color: "#dc2626" }}>
+                    Você precisa de pelo menos 10 pontos para jogar.
+                  </p>
+                ) : (
+                  <>
+                    <div
+                      style={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        gap: 8,
+                        justifyContent: "center",
+                      }}
+                    >
+                      {Array.from(
+                        { length: Math.min(15, Math.floor(user.points / 10)) },
+                        (_, i) => (i + 1) * 10
+                      ).map((v) => {
+                        const active = stake === v;
+                        return (
+                          <button
+                            key={v}
+                            type="button"
+                            onClick={() => setStake(v)}
+                            style={{
+                              padding: "10px 14px",
+                              borderRadius: 12,
+                              border: active
+                                ? "2px solid #0ea5e9"
+                                : "1px solid #cbd5e1",
+                              background: active ? "#0ea5e9" : "#f1f5f9",
+                              color: active ? "white" : "#0f172a",
+                              fontWeight: 600,
+                              fontSize: 14,
+                              cursor: "pointer",
+                              minWidth: 64,
+                            }}
+                          >
+                            {v}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        if (user.points < 10) return;
+                        startGame();
+                      }}
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 14,
+                        marginTop: 4,
+                      }}
+                    >
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        <label
+                          style={{
+                            fontSize: 12,
+                            fontWeight: 600,
+                            letterSpacing: 0.5,
+                          }}
+                        >
+                          Ou digite manualmente (mín 10, múltiplo de 10)
+                        </label>
+                        <input
+                          type="number"
+                          min={10}
+                          step={10}
+                          value={stake}
+                          onChange={(e) =>
+                            setStake(
+                              Math.min(
+                                user.points,
+                                Math.max(10, Math.round(Number(e.target.value) / 10) * 10)
+                              )
+                            )
+                          }
+                          style={{
+                            padding: "10px 14px",
+                            borderRadius: 12,
+                            border: "1px solid #cbd5e1",
+                            fontSize: 14,
+                            outline: "none",
+                            width: "100%",
+                          }}
+                        />
+                      </div>
+                      <button
+                        type="submit"
+                        disabled={stake < 10 || stake > user.points || stake % 10 !== 0}
+                        style={{
+                          padding: "14px 18px",
+                          borderRadius: 14,
+                          border: "none",
+                          background:
+                            stake < 10 || stake > user.points || stake % 10 !== 0
+                              ? "#7dd3fc"
+                              : "#0ea5e9",
+                          color: "white",
+                          fontWeight: 600,
+                          cursor:
+                            stake < 10 || stake > user.points || stake % 10 !== 0
+                              ? "not-allowed"
+                              : "pointer",
+                          fontSize: 15,
+                        }}
+                      >
+                        Iniciar com {stake}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowStakeModal(false)}
+                        style={{
+                          padding: "10px 14px",
+                          borderRadius: 12,
+                          border: "1px solid #cbd5e1",
+                          background: "white",
+                          color: "#0f172a",
+                          fontWeight: 600,
+                          cursor: "pointer",
+                          fontSize: 13,
+                        }}
+                      >
+                        Cancelar
+                      </button>
+                      <p style={{ fontSize: 11, opacity: 0.6, textAlign: "center" }}>
+                        O valor define os prêmios nos níveis 10 · 20 · 30 · 40.
+                      </p>
+                    </form>
+                  </>
                 )}
               </div>
             </div>
