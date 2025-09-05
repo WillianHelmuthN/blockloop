@@ -122,7 +122,7 @@ export default function Page() {
     setT(Math.random()); // posição inicial aleatória
     setState("playing");
     setShowMilestoneModal(false);
-  setShowStakeModal(false);
+    setShowStakeModal(false);
     boardRef.current?.focus();
   }
 
@@ -302,17 +302,21 @@ export default function Page() {
               opacity:
                 (state === "idle" && user.points < 10) ||
                 (state === "gameover" && user.points < 10)
-                  ? 0.5 : 1,
+                  ? 0.5
+                  : 1,
               cursor:
                 (state === "idle" && user.points < 10) ||
                 (state === "gameover" && user.points < 10)
-                  ? "not-allowed" : "pointer",
+                  ? "not-allowed"
+                  : "pointer",
               fontWeight: 600,
             }}
           >
             {state === "playing"
               ? "Desistir"
-              : state === "gameover" ? "Nova Partida" : "Jogar"}
+              : state === "gameover"
+              ? "Nova Partida"
+              : "Jogar"}
           </button>
           <div style={{ fontWeight: 600 }}>Nível: {score}</div>
           <div style={{ fontWeight: 600 }}>
@@ -420,7 +424,7 @@ export default function Page() {
                     : "Game Over"}
                 </p>
                 <p style={{ opacity: 0.8 }}>
-                  Acerte quando o bloco passar pela zona destacada no perímetro.
+                  Clique quando a <span style={{ color: "#0ea5e9", fontWeight: 600 }}>Bolinha Azul</span> passar pela zona <span style={{ color: "#22c55e", fontWeight: 600 }}>Verde</span> destacada no perímetro.
                 </p>
                 {state === "gameover" && (
                   <p style={{ marginTop: 8 }}>
@@ -660,7 +664,13 @@ export default function Page() {
                         marginTop: 4,
                       }}
                     >
-                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 6,
+                        }}
+                      >
                         <label
                           style={{
                             fontSize: 12,
@@ -679,7 +689,10 @@ export default function Page() {
                             setStake(
                               Math.min(
                                 user.points,
-                                Math.max(10, Math.round(Number(e.target.value) / 10) * 10)
+                                Math.max(
+                                  10,
+                                  Math.round(Number(e.target.value) / 10) * 10
+                                )
                               )
                             )
                           }
@@ -695,19 +708,25 @@ export default function Page() {
                       </div>
                       <button
                         type="submit"
-                        disabled={stake < 10 || stake > user.points || stake % 10 !== 0}
+                        disabled={
+                          stake < 10 || stake > user.points || stake % 10 !== 0
+                        }
                         style={{
                           padding: "14px 18px",
                           borderRadius: 14,
                           border: "none",
                           background:
-                            stake < 10 || stake > user.points || stake % 10 !== 0
+                            stake < 10 ||
+                            stake > user.points ||
+                            stake % 10 !== 0
                               ? "#7dd3fc"
                               : "#0ea5e9",
                           color: "white",
                           fontWeight: 600,
                           cursor:
-                            stake < 10 || stake > user.points || stake % 10 !== 0
+                            stake < 10 ||
+                            stake > user.points ||
+                            stake % 10 !== 0
                               ? "not-allowed"
                               : "pointer",
                           fontSize: 15,
@@ -731,7 +750,13 @@ export default function Page() {
                       >
                         Cancelar
                       </button>
-                      <p style={{ fontSize: 11, opacity: 0.6, textAlign: "center" }}>
+                      <p
+                        style={{
+                          fontSize: 11,
+                          opacity: 0.6,
+                          textAlign: "center",
+                        }}
+                      >
                         O valor define os prêmios nos níveis 10 · 20 · 30 · 40.
                       </p>
                     </form>
