@@ -424,7 +424,15 @@ export default function Page() {
                     : "Game Over"}
                 </p>
                 <p style={{ opacity: 0.8 }}>
-                  Clique quando a <span style={{ color: "#0ea5e9", fontWeight: 600 }}>Bolinha Azul</span> passar pela zona <span style={{ color: "#22c55e", fontWeight: 600 }}>Verde</span> destacada no perímetro.
+                  Clique quando a{" "}
+                  <span style={{ color: "#0ea5e9", fontWeight: 600 }}>
+                    Bolinha Azul
+                  </span>{" "}
+                  passar pela zona{" "}
+                  <span style={{ color: "#22c55e", fontWeight: 600 }}>
+                    Verde
+                  </span>{" "}
+                  destacada no perímetro.
                 </p>
                 {state === "gameover" && (
                   <p style={{ marginTop: 8 }}>
@@ -664,48 +672,6 @@ export default function Page() {
                         marginTop: 4,
                       }}
                     >
-                      <div
-                        style={{
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: 6,
-                        }}
-                      >
-                        <label
-                          style={{
-                            fontSize: 12,
-                            fontWeight: 600,
-                            letterSpacing: 0.5,
-                          }}
-                        >
-                          Ou digite manualmente (mín 10, múltiplo de 10)
-                        </label>
-                        <input
-                          type="number"
-                          min={10}
-                          step={10}
-                          value={stake}
-                          onChange={(e) =>
-                            setStake(
-                              Math.min(
-                                user.points,
-                                Math.max(
-                                  10,
-                                  Math.round(Number(e.target.value) / 10) * 10
-                                )
-                              )
-                            )
-                          }
-                          style={{
-                            padding: "10px 14px",
-                            borderRadius: 12,
-                            border: "1px solid #cbd5e1",
-                            fontSize: 14,
-                            outline: "none",
-                            width: "100%",
-                          }}
-                        />
-                      </div>
                       <button
                         type="submit"
                         disabled={
