@@ -347,6 +347,8 @@ export default function Page() {
           aria-label="Área do jogo. Clique ou toque para jogar."
           // Usar Pointer Events evita contagem dupla (touch gera click sintetizado)
           onPointerDown={(e) => {
+            // Se um modal está aberto, permitir interação com ele (não capturar o evento)
+            if (showStakeModal || showMilestoneModal) return;
             if (!e.isPrimary) return;
             e.preventDefault();
             handleAction();
@@ -454,7 +456,8 @@ export default function Page() {
               style={{
                 position: "fixed",
                 inset: 0,
-                background: "rgba(0,0,0,0.55)",
+                // overlay mais sutil para acompanhar o design do projeto
+                background: "rgba(2,6,23,0.06)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -494,7 +497,7 @@ export default function Page() {
                   Você já ganhou {currentStake * (multiplierFor(score) || 0)}{" "}
                   pontos!
                 </h2>
-                <p style={{ fontSize: 13, opacity: 0.75, textAlign: "center" }}>
+                <p style={{ fontSize: 13, opacity: 0.85, textAlign: "center" }}>
                   Valor inicial: {currentStake} · Prêmio alcançado:{" "}
                   {currentStake * (multiplierFor(score) || 0)}
                 </p>
@@ -507,8 +510,8 @@ export default function Page() {
                       width: "100%",
                       padding: "14px 18px",
                       borderRadius: 12,
-                      border: "1px solid #059669",
-                      background: "#10b981",
+                      border: "1px solid rgba(255,255,255,0.06)",
+                      background: "#071022",
                       color: "white",
                       fontWeight: 600,
                       cursor: "pointer",
@@ -536,8 +539,8 @@ export default function Page() {
                           width: "100%",
                           padding: "14px 18px",
                           borderRadius: 12,
-                          border: "1px solid #0369a1",
-                          background: "#0ea5e9",
+                          border: "1px solid rgba(255,255,255,0.06)",
+                          background: "#071022",
                           color: "white",
                           fontWeight: 600,
                           cursor: "pointer",
@@ -580,7 +583,8 @@ export default function Page() {
               style={{
                 position: "fixed",
                 inset: 0,
-                background: "rgba(0,0,0,0.55)",
+                // overlay mais sutil para acompanhar o design do projeto
+                background: "rgba(2,6,23,0.06)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -594,13 +598,13 @@ export default function Page() {
             >
               <div
                 style={{
-                  background: "white",
-                  color: "#0f172a",
+                  background: "#071022",
+                  color: "#e6eef8",
                   padding: 22,
                   borderRadius: 20,
                   width: "100%",
                   maxWidth: 420,
-                  boxShadow: "0 10px 40px -5px rgba(0,0,0,0.25)",
+                  boxShadow: "0 10px 40px -5px rgba(0,0,0,0.6)",
                   display: "flex",
                   flexDirection: "column",
                   gap: 18,
@@ -625,39 +629,49 @@ export default function Page() {
                     <div
                       style={{
                         display: "flex",
-                        flexWrap: "wrap",
+                        flexDirection: "column",
                         gap: 8,
-                        justifyContent: "center",
+                        alignItems: "center",
                       }}
                     >
-                      {Array.from(
-                        { length: Math.min(15, Math.floor(user.points / 10)) },
-                        (_, i) => (i + 1) * 10
-                      ).map((v) => {
-                        const active = stake === v;
-                        return (
-                          <button
-                            key={v}
-                            type="button"
-                            onClick={() => setStake(v)}
-                            style={{
-                              padding: "10px 14px",
-                              borderRadius: 12,
-                              border: active
-                                ? "2px solid #0ea5e9"
-                                : "1px solid #cbd5e1",
-                              background: active ? "#0ea5e9" : "#f1f5f9",
-                              color: active ? "white" : "#0f172a",
-                              fontWeight: 600,
-                              fontSize: 14,
-                              cursor: "pointer",
-                              minWidth: 64,
-                            }}
-                          >
-                            {v}
-                          </button>
-                        );
-                      })}
+                      <label
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 6,
+                          width: "100%",
+                          maxWidth: 220,
+                        }}
+                      >
+                        <span style={{ fontSize: 13, fontWeight: 600 }}>
+                          Valor da aposta
+                        </span>
+                        <input
+                          type="number"
+                          min={0}
+                          step={1}
+                          value={stake}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            if (v === "") {
+                              setStake(0);
+                              return;
+                            }
+                            const n = Number(v);
+                            if (Number.isNaN(n)) return;
+                            setStake(n);
+                          }}
+                          style={{
+                            padding: "10px 12px",
+                            borderRadius: 10,
+                            border: "1px solid rgba(255,255,255,0.06)",
+                            fontSize: 14,
+                            outline: "none",
+                            background: "#021224",
+                            color: "#e6eef8",
+                          }}
+                        />
+                      </label>
                     </div>
                     <form
                       onSubmit={(e) => {
@@ -674,25 +688,19 @@ export default function Page() {
                     >
                       <button
                         type="submit"
-                        disabled={
-                          stake < 10 || stake > user.points || stake % 10 !== 0
-                        }
+                        disabled={stake < 10 || stake > user.points}
                         style={{
                           padding: "14px 18px",
                           borderRadius: 14,
                           border: "none",
                           background:
-                            stake < 10 ||
-                            stake > user.points ||
-                            stake % 10 !== 0
-                              ? "#7dd3fc"
+                            stake < 10 || stake > user.points
+                              ? "rgba(14,165,233,0.18)"
                               : "#0ea5e9",
                           color: "white",
                           fontWeight: 600,
                           cursor:
-                            stake < 10 ||
-                            stake > user.points ||
-                            stake % 10 !== 0
+                            stake < 10 || stake > user.points
                               ? "not-allowed"
                               : "pointer",
                           fontSize: 15,
@@ -706,9 +714,9 @@ export default function Page() {
                         style={{
                           padding: "10px 14px",
                           borderRadius: 12,
-                          border: "1px solid #cbd5e1",
-                          background: "white",
-                          color: "#0f172a",
+                          border: "1px solid rgba(255,255,255,0.06)",
+                          background: "transparent",
+                          color: "#e6eef8",
                           fontWeight: 600,
                           cursor: "pointer",
                           fontSize: 13,
