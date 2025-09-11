@@ -487,20 +487,15 @@ export default function Page() {
               >
                 <h2
                   style={{
-                    fontSize: 20,
-                    fontWeight: 700,
-                    margin: 0,
-                    textAlign: "center",
-                    paddingBottom: 10,
+                  fontSize: 20,
+                  fontWeight: 700,
+                  margin: 0,
+                  textAlign: "center",
+                  paddingBottom: 20,
                   }}
                 >
-                  Você já ganhou {currentStake * (multiplierFor(score) || 0)}{" "}
-                  pontos!
+                  Você ganhou R$ {(currentStake * (multiplierFor(score) || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Reais
                 </h2>
-                <p style={{ fontSize: 13, opacity: 0.85, textAlign: "center" }}>
-                  Valor inicial: {currentStake} · Prêmio alcançado:{" "}
-                  {currentStake * (multiplierFor(score) || 0)}
-                </p>
                 <div
                   style={{ display: "flex", flexDirection: "column", gap: 12 }}
                 >
@@ -517,7 +512,7 @@ export default function Page() {
                       cursor: "pointer",
                     }}
                   >
-                    Sacar {multiplierFor(score)}x
+                    Sacar
                   </button>
                   {canContinue(score) && (
                     <>
@@ -527,7 +522,7 @@ export default function Page() {
                           fontSize: 12,
                           fontWeight: 600,
                           letterSpacing: 1,
-                          opacity: 0.55,
+                          opacity: 0.8,
                           textTransform: "uppercase",
                         }}
                       >
@@ -540,7 +535,7 @@ export default function Page() {
                           padding: "14px 18px",
                           borderRadius: 12,
                           border: "1px solid rgba(255,255,255,0.06)",
-                          background: "#071022",
+                          background: "#ff180d",
                           color: "white",
                           fontWeight: 600,
                           cursor: "pointer",
@@ -551,13 +546,12 @@ export default function Page() {
                       <div
                         style={{
                           textAlign: "center",
-                          fontSize: 12,
-                          opacity: 0.75,
+                          fontSize: 14,
                           marginTop: -2,
                           fontWeight: 500,
                         }}
                       >
-                        Para multiplicar seu Prêmio
+                        Para multiplicar seu Prêmio!
                       </div>
                     </>
                   )}
