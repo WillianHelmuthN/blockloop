@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { clamp, randRange, tToXY, isHit } from "./lib/geometry";
 import ZoneOverlay from "./components/ZoneOverlay";
 import { usePersistentState } from "./hooks/usePersistentState";
@@ -223,7 +224,7 @@ export default function Page() {
             <p style={{ fontSize: 14, opacity: 0.75, marginBottom: 16 }}>
               Para jogar, faça login.
             </p>
-            <a
+            <Link
               href="/sign-in"
               style={{
                 display: "inline-block",
@@ -236,12 +237,12 @@ export default function Page() {
               }}
             >
               Entrar
-            </a>
+            </Link>
             <div style={{ marginTop: 8, fontSize: 12 }}>
               Novo aqui?{" "}
-              <a href="/sign-up" style={{ color: "#7dd3fc" }}>
+              <Link href="/sign-up" style={{ color: "#7dd3fc" }}>
                 Criar conta
-              </a>
+              </Link>
             </div>
           </div>
         </main>
@@ -300,7 +301,7 @@ export default function Page() {
             <p style={{ fontSize: 14, opacity: 0.75, marginBottom: 16 }}>
               Para jogar, faça login.
             </p>
-            <a
+            <Link
               href="/sign-in"
               style={{
                 display: "inline-block",
@@ -313,12 +314,12 @@ export default function Page() {
               }}
             >
               Entrar
-            </a>
+            </Link>
             <div style={{ marginTop: 8, fontSize: 12 }}>
               Novo aqui?{" "}
-              <a href="/sign-up" style={{ color: "#7dd3fc" }}>
+              <Link href="/sign-up" style={{ color: "#7dd3fc" }}>
                 Criar conta
-              </a>
+              </Link>
             </div>
           </div>
         </main>
