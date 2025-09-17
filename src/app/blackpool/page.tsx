@@ -5,6 +5,7 @@ import { clamp, randRange, tToXY, isHit } from "./lib/geometry";
 import ZoneOverlay from "./components/ZoneOverlay";
 import { usePersistentState } from "./hooks/usePersistentState";
 import { useUserPoints } from "../providers/UserPointsProvider";
+import { SignedIn, SignedOut, useUser } from "@clerk/nextjs";
 
 type GameState = "idle" | "playing" | "paused" | "gameover";
 
@@ -12,6 +13,19 @@ type GameState = "idle" | "playing" | "paused" | "gameover";
 
 export default function Page() {
   const { user, login, addPoints } = useUserPoints();
+  const clerk = useUser();
+
+  // Se o usuário estiver autenticado no Clerk e não houver perfil local, inicializa com nome do Clerk
+  useEffect(() => {
+    if (clerk.isSignedIn && clerk.user && !user) {
+      const name =
+        clerk.user.fullName ||
+        clerk.user.username ||
+        clerk.user.primaryEmailAddress?.emailAddress ||
+        "Player";
+      login(name);
+    }
+  }, [clerk.isSignedIn, clerk.user, user, login]);
 
   // Aposta atual (valor colocado na partida) e estado
   const [stake, setStake] = useState<number>(10);
@@ -188,31 +202,50 @@ export default function Page() {
   // Converter zona (t) para um segmento visual nas 4 arestas — simplificação:
   // Renderizamos a zona como um traço “fluorescente” no perímetro com CSS gradient
   // usando um pseudo elemento posicionando overlay + mask linear.
-  // Gate de login simples: se não há user, mostrar tela para inserir nome
+  // Gate de login simples: se não há user LOCAL ou não está signed-in, mostrar tela de login do Clerk
   if (!user) {
     return (
-      <main
-        style={{
-          minHeight: "100dvh",
-          display: "grid",
-          placeItems: "center",
-          fontFamily:
-            "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto",
-          padding: 16,
-        }}
-      >
-        <div style={{ width: "100%", maxWidth: 420 }}>
-          <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 12 }}>
-            Black Pool
-          </h1>
-          <p style={{ fontSize: 14, opacity: 0.75, marginBottom: 16 }}>
-            Escolha um nome para começar. Você receberá{" "}
-            <strong>100 pontos</strong> iniciais para jogar em toda a plataforma
-            (MVP local).
-          </p>
-          <LoginForm onLogin={login} />
-        </div>
-      </main>
+      <SignedOut>
+        <main
+          style={{
+            minHeight: "100dvh",
+            display: "grid",
+            placeItems: "center",
+            fontFamily:
+              "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto",
+            padding: 16,
+          }}
+        >
+          <div style={{ width: "100%", maxWidth: 420, textAlign: "center" }}>
+            <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 12 }}>
+              Black Pool
+            </h1>
+            <p style={{ fontSize: 14, opacity: 0.75, marginBottom: 16 }}>
+              Para jogar, faça login.
+            </p>
+            <a
+              href="/sign-in"
+              style={{
+                display: "inline-block",
+                padding: "12px 16px",
+                borderRadius: 12,
+                background: "#0ea5e9",
+                color: "white",
+                fontWeight: 700,
+                textDecoration: "none",
+              }}
+            >
+              Entrar
+            </a>
+            <div style={{ marginTop: 8, fontSize: 12 }}>
+              Novo aqui?{" "}
+              <a href="/sign-up" style={{ color: "#7dd3fc" }}>
+                Criar conta
+              </a>
+            </div>
+          </div>
+        </main>
+      </SignedOut>
     );
   }
 
@@ -248,558 +281,574 @@ export default function Page() {
   }
 
   return (
-    <main
-      style={{
-        minHeight: "100dvh",
-        display: "grid",
-        placeItems: "center",
-        fontFamily: "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto",
-        padding: 16,
-      }}
-    >
-      <div
-        ref={outerRef}
-        style={{ width: "100%", maxWidth: boardW, paddingInline: 0 }}
-      >
-        <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 8 }}>
-          Black Pool
-        </h1>
-
-        <div
+    <>
+      <SignedOut>
+        <main
           style={{
-            display: "flex",
-            gap: 12,
-            alignItems: "center",
-            marginBottom: 12,
-            flexWrap: "wrap",
+            minHeight: "100dvh",
+            display: "grid",
+            placeItems: "center",
+            fontFamily:
+              "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto",
+            padding: 16,
           }}
         >
-          <button
-            onClick={() => {
-              if (state === "playing") return onMiss();
-              if (state === "idle") return setShowStakeModal(true);
-              if (state === "gameover") {
-                // Reiniciar fluxo: voltar ao idle para escolher novo stake
-                setState("idle");
-                setShowStakeModal(true);
-              }
-            }}
-            aria-label={
-              state === "playing"
-                ? "Desistir"
-                : state === "gameover"
-                ? "Selecionar valor para nova partida"
-                : "Selecionar valor e iniciar"
-            }
-            disabled={
-              (state === "idle" && user.points < 10) ||
-              (state === "gameover" && user.points < 10)
-            }
-            style={{
-              padding: "8px 14px",
-              borderRadius: 12,
-              border: "1px solid #e2e8f0",
-              opacity:
-                (state === "idle" && user.points < 10) ||
-                (state === "gameover" && user.points < 10)
-                  ? 0.5
-                  : 1,
-              cursor:
-                (state === "idle" && user.points < 10) ||
-                (state === "gameover" && user.points < 10)
-                  ? "not-allowed"
-                  : "pointer",
-              fontWeight: 600,
-            }}
-          >
-            {state === "playing"
-              ? "Desistir"
-              : state === "gameover"
-              ? "Nova Partida"
-              : "Jogar"}
-          </button>
-          <div style={{ fontWeight: 600 }}>Nível: {score}</div>
-          <div style={{ fontWeight: 600 }}>
-            {(() => {
-              if (!user) return null; // safe guard
-              if (currentStake == null) {
-                return <>Saldo: {user.points}</>;
-              }
-              const valorInicial = currentStake; // stake colocada
-              const premioAtual = currentStake * (multiplierFor(score) || 0); // prêmio só existe nos milestones
-              const saldoGlobal = user.points; // saldo restante global
-              return (
-                <>
-                  Valor inicial: {valorInicial} · Valor atual: {premioAtual} ·
-                  Saldo: {saldoGlobal}
-                </>
-              );
-            })()}
-          </div>
-          <div style={{ opacity: 0.8 }}>Jogador: {user.name}</div>
-          <div style={{ opacity: 0.8 }}>Best: {best}</div>
-        </div>
-
-        <div
-          ref={boardRef}
-          tabIndex={0}
-          role="button"
-          aria-label="Área do jogo. Clique ou toque para jogar."
-          // Usar Pointer Events evita contagem dupla (touch gera click sintetizado)
-          onPointerDown={(e) => {
-            // Se um modal está aberto, permitir interação com ele (não capturar o evento)
-            if (showStakeModal || showMilestoneModal) return;
-            if (!e.isPrimary) return;
-            e.preventDefault();
-            handleAction();
-          }}
-          style={{
-            position: "relative",
-            width: displayW,
-            height: displayH,
-            borderRadius: 16,
-            border: "2px solid #0ea5e9",
-            outline: "none",
-            userSelect: "none",
-            background:
-              "radial-gradient(1000px 400px at 50% -200px, rgba(14,165,233,0.05), transparent)",
-            boxShadow: "0 10px 30px rgba(0,0,0,0.08) inset",
-            overflow: "hidden",
-            cursor: "pointer",
-          }}
-        >
-          {/* Trilha/perímetro (para dar contraste) */}
-          <div
-            aria-hidden
-            style={{
-              position: "absolute",
-              left: inset,
-              top: inset,
-              right: inset,
-              bottom: inset,
-              borderRadius: 12,
-              border: "6px solid rgba(2,6,23,0.1)",
-            }}
-          />
-
-          {/* Zona de acerto — desenhada como glow ao longo do perímetro via múltiplos gradientes */}
-          <ZoneOverlay w={displayW} h={displayH} inset={inset} zone={zone} />
-
-          {/* Bloco */}
-          <div
-            style={{
-              position: "absolute",
-              width: blockSize,
-              height: blockSize,
-              borderRadius: 6,
-              background: isHit(t, zone.start, zone.end)
-                ? "#22c55e"
-                : "#0ea5e9",
-              transform: `translate(${x - blockSize / 2}px, ${
-                y - blockSize / 2
-              }px)`,
-              boxShadow: "0 6px 18px rgba(14,165,233,0.35)",
-              transition: "background 80ms linear",
-            }}
-          />
-
-          {/* Instruções overlay */}
-          {state !== "playing" && !showMilestoneModal && (
-            <div
+          <div style={{ width: "100%", maxWidth: 420, textAlign: "center" }}>
+            <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 12 }}>
+              Black Pool
+            </h1>
+            <p style={{ fontSize: 14, opacity: 0.75, marginBottom: 16 }}>
+              Para jogar, faça login.
+            </p>
+            <a
+              href="/sign-in"
               style={{
-                position: "absolute",
-                inset: 0,
-                display: "grid",
-                placeItems: "center",
-                background:
-                  "linear-gradient(to bottom, rgba(2,6,23,0.0), rgba(2,6,23,0.06))",
-                textAlign: "center",
-                padding: 24,
+                display: "inline-block",
+                padding: "12px 16px",
+                borderRadius: 12,
+                background: "#0ea5e9",
+                color: "white",
+                fontWeight: 700,
+                textDecoration: "none",
               }}
             >
-              <div>
-                <p style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>
-                  {state === "idle"
-                    ? "Clique para escolher o valor e iniciar"
-                    : state === "paused"
-                    ? "Pausado"
-                    : "Game Over"}
-                </p>
-                <p style={{ opacity: 0.8 }}>
-                  Clique quando a{" "}
-                  <span style={{ color: "#0ea5e9", fontWeight: 600 }}>
-                    Bolinha Azul
-                  </span>{" "}
-                  passar pela zona{" "}
-                  <span style={{ color: "#22c55e", fontWeight: 600 }}>
-                    Verde
-                  </span>{" "}
-                  destacada no perímetro.
-                </p>
-                {state === "gameover" && (
-                  <p style={{ marginTop: 8 }}>
-                    Score: {score} · Best: {best}
-                  </p>
-                )}
-                {state === "idle" && (
-                  <p style={{ marginTop: 8, fontSize: 12, opacity: 0.7 }}>
-                    O valor define o potencial de prêmio nos níveis 10/20/30/40.
-                  </p>
-                )}
-              </div>
+              Entrar
+            </a>
+            <div style={{ marginTop: 8, fontSize: 12 }}>
+              Novo aqui?{" "}
+              <a href="/sign-up" style={{ color: "#7dd3fc" }}>
+                Criar conta
+              </a>
             </div>
-          )}
+          </div>
+        </main>
+      </SignedOut>
+      <SignedIn>
+        <main
+          style={{
+            minHeight: "100dvh",
+            display: "grid",
+            placeItems: "center",
+            fontFamily:
+              "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto",
+            padding: 16,
+          }}
+        >
+          <div
+            ref={outerRef}
+            style={{ width: "100%", maxWidth: boardW, paddingInline: 0 }}
+          >
+            <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 8 }}>
+              Black Pool
+            </h1>
 
-          {/* Modal de Milestone */}
-          {showMilestoneModal && currentStake != null && (
             <div
               style={{
-                position: "fixed",
-                inset: 0,
-                // overlay mais sutil para acompanhar o design do projeto
-                background: "rgba(2,6,23,0.06)",
                 display: "flex",
+                gap: 12,
                 alignItems: "center",
-                justifyContent: "center",
-                padding: 16,
-                zIndex: 1000,
-                backdropFilter: "blur(2px)",
-                WebkitBackdropFilter: "blur(2px)",
+                marginBottom: 12,
+                flexWrap: "wrap",
               }}
-              role="dialog"
-              aria-modal="true"
             >
-              <div
+              <button
+                onClick={() => {
+                  if (state === "playing") return onMiss();
+                  if (state === "idle") return setShowStakeModal(true);
+                  if (state === "gameover") {
+                    // Reiniciar fluxo: voltar ao idle para escolher novo stake
+                    setState("idle");
+                    setShowStakeModal(true);
+                  }
+                }}
+                aria-label={
+                  state === "playing"
+                    ? "Desistir"
+                    : state === "gameover"
+                    ? "Selecionar valor para nova partida"
+                    : "Selecionar valor e iniciar"
+                }
+                disabled={
+                  (state === "idle" && user.points < 10) ||
+                  (state === "gameover" && user.points < 10)
+                }
                 style={{
-                  background: "white",
-                  color: "#0f172a",
-                  padding: 20,
-                  borderRadius: 18,
-                  width: "100%",
-                  maxWidth: 420,
-                  boxShadow: "0 10px 40px -5px rgba(0,0,0,0.25)",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 14,
-                  maxHeight: "90vh",
-                  overflowY: "auto",
+                  padding: "8px 14px",
+                  borderRadius: 12,
+                  border: "1px solid #e2e8f0",
+                  opacity:
+                    (state === "idle" && user.points < 10) ||
+                    (state === "gameover" && user.points < 10)
+                      ? 0.5
+                      : 1,
+                  cursor:
+                    (state === "idle" && user.points < 10) ||
+                    (state === "gameover" && user.points < 10)
+                      ? "not-allowed"
+                      : "pointer",
+                  fontWeight: 600,
                 }}
               >
-                <h2
+                {state === "playing"
+                  ? "Desistir"
+                  : state === "gameover"
+                  ? "Nova Partida"
+                  : "Jogar"}
+              </button>
+              <div style={{ fontWeight: 600 }}>Nível: {score}</div>
+              <div style={{ fontWeight: 600 }}>
+                {(() => {
+                  if (!user) return null; // safe guard
+                  if (currentStake == null) {
+                    return <>Saldo: {user.points}</>;
+                  }
+                  const valorInicial = currentStake; // stake colocada
+                  const premioAtual =
+                    currentStake * (multiplierFor(score) || 0); // prêmio só existe nos milestones
+                  const saldoGlobal = user.points; // saldo restante global
+                  return (
+                    <>
+                      Valor inicial: {valorInicial} · Valor atual: {premioAtual}{" "}
+                      · Saldo: {saldoGlobal}
+                    </>
+                  );
+                })()}
+              </div>
+              <div style={{ opacity: 0.8 }}>Jogador: {user.name}</div>
+              <div style={{ opacity: 0.8 }}>Best: {best}</div>
+            </div>
+
+            <div
+              ref={boardRef}
+              tabIndex={0}
+              role="button"
+              aria-label="Área do jogo. Clique ou toque para jogar."
+              // Usar Pointer Events evita contagem dupla (touch gera click sintetizado)
+              onPointerDown={(e) => {
+                // Se um modal está aberto, permitir interação com ele (não capturar o evento)
+                if (showStakeModal || showMilestoneModal) return;
+                if (!e.isPrimary) return;
+                e.preventDefault();
+                handleAction();
+              }}
+              style={{
+                position: "relative",
+                width: displayW,
+                height: displayH,
+                borderRadius: 16,
+                border: "2px solid #0ea5e9",
+                outline: "none",
+                userSelect: "none",
+                background:
+                  "radial-gradient(1000px 400px at 50% -200px, rgba(14,165,233,0.05), transparent)",
+                boxShadow: "0 10px 30px rgba(0,0,0,0.08) inset",
+                overflow: "hidden",
+                cursor: "pointer",
+              }}
+            >
+              {/* Trilha/perímetro (para dar contraste) */}
+              <div
+                aria-hidden
+                style={{
+                  position: "absolute",
+                  left: inset,
+                  top: inset,
+                  right: inset,
+                  bottom: inset,
+                  borderRadius: 12,
+                  border: "6px solid rgba(2,6,23,0.1)",
+                }}
+              />
+
+              {/* Zona de acerto — desenhada como glow ao longo do perímetro via múltiplos gradientes */}
+              <ZoneOverlay
+                w={displayW}
+                h={displayH}
+                inset={inset}
+                zone={zone}
+              />
+
+              {/* Bloco */}
+              <div
+                style={{
+                  position: "absolute",
+                  width: blockSize,
+                  height: blockSize,
+                  borderRadius: 6,
+                  background: isHit(t, zone.start, zone.end)
+                    ? "#22c55e"
+                    : "#0ea5e9",
+                  transform: `translate(${x - blockSize / 2}px, ${
+                    y - blockSize / 2
+                  }px)`,
+                  boxShadow: "0 6px 18px rgba(14,165,233,0.35)",
+                  transition: "background 80ms linear",
+                }}
+              />
+
+              {/* Instruções overlay */}
+              {state !== "playing" && !showMilestoneModal && (
+                <div
                   style={{
-                  fontSize: 20,
-                  fontWeight: 700,
-                  margin: 0,
-                  textAlign: "center",
-                  paddingBottom: 20,
+                    position: "absolute",
+                    inset: 0,
+                    display: "grid",
+                    placeItems: "center",
+                    background:
+                      "linear-gradient(to bottom, rgba(2,6,23,0.0), rgba(2,6,23,0.06))",
+                    textAlign: "center",
+                    padding: 24,
                   }}
                 >
-                  Você ganhou R$ {(currentStake * (multiplierFor(score) || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Reais
-                </h2>
+                  <div>
+                    <p
+                      style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}
+                    >
+                      {state === "idle"
+                        ? "Clique para escolher o valor e iniciar"
+                        : state === "paused"
+                        ? "Pausado"
+                        : "Game Over"}
+                    </p>
+                    <p style={{ opacity: 0.8 }}>
+                      Clique quando a{" "}
+                      <span style={{ color: "#0ea5e9", fontWeight: 600 }}>
+                        Bolinha Azul
+                      </span>{" "}
+                      passar pela zona{" "}
+                      <span style={{ color: "#22c55e", fontWeight: 600 }}>
+                        Verde
+                      </span>{" "}
+                      destacada no perímetro.
+                    </p>
+                    {state === "gameover" && (
+                      <p style={{ marginTop: 8 }}>
+                        Score: {score} · Best: {best}
+                      </p>
+                    )}
+                    {state === "idle" && (
+                      <p style={{ marginTop: 8, fontSize: 12, opacity: 0.7 }}>
+                        O valor define o potencial de prêmio nos níveis
+                        10/20/30/40.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Modal de Milestone */}
+              {showMilestoneModal && currentStake != null && (
                 <div
-                  style={{ display: "flex", flexDirection: "column", gap: 12 }}
+                  style={{
+                    position: "fixed",
+                    inset: 0,
+                    // overlay mais sutil para acompanhar o design do projeto
+                    background: "rgba(2,6,23,0.06)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    padding: 16,
+                    zIndex: 1000,
+                    backdropFilter: "blur(2px)",
+                    WebkitBackdropFilter: "blur(2px)",
+                  }}
+                  role="dialog"
+                  aria-modal="true"
                 >
-                  <button
-                    onClick={handleCashOut}
+                  <div
                     style={{
+                      background: "white",
+                      color: "#0f172a",
+                      padding: 20,
+                      borderRadius: 18,
                       width: "100%",
-                      padding: "14px 18px",
-                      borderRadius: 12,
-                      border: "1px solid rgba(255,255,255,0.06)",
-                      background: "#071022",
-                      color: "white",
-                      fontWeight: 600,
-                      cursor: "pointer",
+                      maxWidth: 420,
+                      boxShadow: "0 10px 40px -5px rgba(0,0,0,0.25)",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 14,
+                      maxHeight: "90vh",
+                      overflowY: "auto",
                     }}
                   >
-                    Sacar
-                  </button>
-                  {canContinue(score) && (
-                    <>
-                      <div
-                        style={{
-                          textAlign: "center",
-                          fontSize: 12,
-                          fontWeight: 600,
-                          letterSpacing: 1,
-                          opacity: 0.8,
-                          textTransform: "uppercase",
-                        }}
-                      >
-                        ou
-                      </div>
-                      <button
-                        onClick={handleContinue}
-                        style={{
-                          width: "100%",
-                          padding: "14px 18px",
-                          borderRadius: 12,
-                          border: "1px solid rgba(255,255,255,0.06)",
-                          background: "#ff180d",
-                          color: "white",
-                          fontWeight: 600,
-                          cursor: "pointer",
-                        }}
-                      >
-                        Continuar
-                      </button>
-                      <div
-                        style={{
-                          textAlign: "center",
-                          fontSize: 14,
-                          marginTop: -2,
-                          fontWeight: 500,
-                        }}
-                      >
-                        Para multiplicar seu Prêmio!
-                      </div>
-                    </>
-                  )}
-                </div>
-                {!canContinue(score) && (
-                  <p
-                    style={{ fontSize: 12, opacity: 0.7, textAlign: "center" }}
-                  >
-                    Você atingiu o limite máximo. Saque para finalizar.
-                  </p>
-                )}
-                {score > 10 && canContinue(score) && (
-                  <p style={{ fontSize: 11, opacity: 0.6, marginTop: 4 }}>
-                    Atenção: se errar antes do próximo nível você perde a stake.
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
-          {/* Modal de seleção de valor antes de iniciar */}
-          {showStakeModal && state === "idle" && (
-            <div
-              style={{
-                position: "fixed",
-                inset: 0,
-                // overlay mais sutil para acompanhar o design do projeto
-                background: "rgba(2,6,23,0.06)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                padding: 16,
-                zIndex: 900,
-                backdropFilter: "blur(2px)",
-                WebkitBackdropFilter: "blur(2px)",
-              }}
-              role="dialog"
-              aria-modal="true"
-            >
-              <div
-                style={{
-                  background: "#071022",
-                  color: "#e6eef8",
-                  padding: 22,
-                  borderRadius: 20,
-                  width: "100%",
-                  maxWidth: 420,
-                  boxShadow: "0 10px 40px -5px rgba(0,0,0,0.6)",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 18,
-                  maxHeight: "90vh",
-                  overflowY: "auto",
-                }}
-              >
-                <div style={{ textAlign: "center" }}>
-                  <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>
-                    Escolha o valor da partida
-                  </h2>
-                  <p style={{ fontSize: 12, opacity: 0.7, marginTop: 6 }}>
-                    Saldo disponível: {user.points} ponto(s)
-                  </p>
-                </div>
-                {user.points < 10 ? (
-                  <p style={{ fontSize: 13, color: "#dc2626" }}>
-                    Você precisa de pelo menos 10 pontos para jogar.
-                  </p>
-                ) : (
-                  <>
+                    <h2
+                      style={{
+                        fontSize: 20,
+                        fontWeight: 700,
+                        margin: 0,
+                        textAlign: "center",
+                        paddingBottom: 20,
+                      }}
+                    >
+                      Você ganhou R${" "}
+                      {(
+                        currentStake * (multiplierFor(score) || 0)
+                      ).toLocaleString("pt-BR", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}{" "}
+                      Reais
+                    </h2>
                     <div
                       style={{
                         display: "flex",
                         flexDirection: "column",
-                        gap: 8,
-                        alignItems: "center",
+                        gap: 12,
                       }}
                     >
-                      <label
+                      <button
+                        onClick={handleCashOut}
                         style={{
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: 6,
                           width: "100%",
-                          maxWidth: 220,
-                        }}
-                      >
-                        <span style={{ fontSize: 13, fontWeight: 600 }}>
-                          Valor da aposta
-                        </span>
-                        <input
-                          type="number"
-                          min={0}
-                          step={1}
-                          value={stake}
-                          onChange={(e) => {
-                            const v = e.target.value;
-                            if (v === "") {
-                              setStake(0);
-                              return;
-                            }
-                            const n = Number(v);
-                            if (Number.isNaN(n)) return;
-                            setStake(n);
-                          }}
-                          style={{
-                            padding: "10px 12px",
-                            borderRadius: 10,
-                            border: "1px solid rgba(255,255,255,0.06)",
-                            fontSize: 14,
-                            outline: "none",
-                            background: "#021224",
-                            color: "#e6eef8",
-                          }}
-                        />
-                      </label>
-                    </div>
-                    <form
-                      onSubmit={(e) => {
-                        e.preventDefault();
-                        if (user.points < 10) return;
-                        startGame();
-                      }}
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: 14,
-                        marginTop: 4,
-                      }}
-                    >
-                      <button
-                        type="submit"
-                        disabled={stake < 10 || stake > user.points}
-                        style={{
                           padding: "14px 18px",
-                          borderRadius: 14,
-                          border: "none",
-                          background:
-                            stake < 10 || stake > user.points
-                              ? "rgba(14,165,233,0.18)"
-                              : "#0ea5e9",
-                          color: "white",
-                          fontWeight: 600,
-                          cursor:
-                            stake < 10 || stake > user.points
-                              ? "not-allowed"
-                              : "pointer",
-                          fontSize: 15,
-                        }}
-                      >
-                        Iniciar com {stake}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setShowStakeModal(false)}
-                        style={{
-                          padding: "10px 14px",
                           borderRadius: 12,
                           border: "1px solid rgba(255,255,255,0.06)",
-                          background: "transparent",
-                          color: "#e6eef8",
+                          background: "#071022",
+                          color: "white",
                           fontWeight: 600,
                           cursor: "pointer",
-                          fontSize: 13,
                         }}
                       >
-                        Cancelar
+                        Sacar
                       </button>
+                      {canContinue(score) && (
+                        <>
+                          <div
+                            style={{
+                              textAlign: "center",
+                              fontSize: 12,
+                              fontWeight: 600,
+                              letterSpacing: 1,
+                              opacity: 0.8,
+                              textTransform: "uppercase",
+                            }}
+                          >
+                            ou
+                          </div>
+                          <button
+                            onClick={handleContinue}
+                            style={{
+                              width: "100%",
+                              padding: "14px 18px",
+                              borderRadius: 12,
+                              border: "1px solid rgba(255,255,255,0.06)",
+                              background: "#ff180d",
+                              color: "white",
+                              fontWeight: 600,
+                              cursor: "pointer",
+                            }}
+                          >
+                            Continuar
+                          </button>
+                          <div
+                            style={{
+                              textAlign: "center",
+                              fontSize: 14,
+                              marginTop: -2,
+                              fontWeight: 500,
+                            }}
+                          >
+                            Para multiplicar seu Prêmio!
+                          </div>
+                        </>
+                      )}
+                    </div>
+                    {!canContinue(score) && (
                       <p
                         style={{
-                          fontSize: 11,
-                          opacity: 0.6,
+                          fontSize: 12,
+                          opacity: 0.7,
                           textAlign: "center",
                         }}
                       >
-                        O valor define os prêmios nos níveis 10 · 20 · 30 · 40.
+                        Você atingiu o limite máximo. Saque para finalizar.
                       </p>
-                    </form>
-                  </>
-                )}
-              </div>
+                    )}
+                    {score > 10 && canContinue(score) && (
+                      <p style={{ fontSize: 11, opacity: 0.6, marginTop: 4 }}>
+                        Atenção: se errar antes do próximo nível você perde a
+                        stake.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+              {/* Modal de seleção de valor antes de iniciar */}
+              {showStakeModal && state === "idle" && (
+                <div
+                  style={{
+                    position: "fixed",
+                    inset: 0,
+                    // overlay mais sutil para acompanhar o design do projeto
+                    background: "rgba(2,6,23,0.06)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    padding: 16,
+                    zIndex: 900,
+                    backdropFilter: "blur(2px)",
+                    WebkitBackdropFilter: "blur(2px)",
+                  }}
+                  role="dialog"
+                  aria-modal="true"
+                >
+                  <div
+                    style={{
+                      background: "#071022",
+                      color: "#e6eef8",
+                      padding: 22,
+                      borderRadius: 20,
+                      width: "100%",
+                      maxWidth: 420,
+                      boxShadow: "0 10px 40px -5px rgba(0,0,0,0.6)",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 18,
+                      maxHeight: "90vh",
+                      overflowY: "auto",
+                    }}
+                  >
+                    <div style={{ textAlign: "center" }}>
+                      <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>
+                        Escolha o valor da partida
+                      </h2>
+                      <p style={{ fontSize: 12, opacity: 0.7, marginTop: 6 }}>
+                        Saldo disponível: {user.points} ponto(s)
+                      </p>
+                    </div>
+                    {user.points < 10 ? (
+                      <p style={{ fontSize: 13, color: "#dc2626" }}>
+                        Você precisa de pelo menos 10 pontos para jogar.
+                      </p>
+                    ) : (
+                      <>
+                        <div
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 8,
+                            alignItems: "center",
+                          }}
+                        >
+                          <label
+                            style={{
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: 6,
+                              width: "100%",
+                              maxWidth: 220,
+                            }}
+                          >
+                            <span style={{ fontSize: 13, fontWeight: 600 }}>
+                              Valor da aposta
+                            </span>
+                            <input
+                              type="number"
+                              min={0}
+                              step={1}
+                              value={stake}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                if (v === "") {
+                                  setStake(0);
+                                  return;
+                                }
+                                const n = Number(v);
+                                if (Number.isNaN(n)) return;
+                                setStake(n);
+                              }}
+                              style={{
+                                padding: "10px 12px",
+                                borderRadius: 10,
+                                border: "1px solid rgba(255,255,255,0.06)",
+                                fontSize: 14,
+                                outline: "none",
+                                background: "#021224",
+                                color: "#e6eef8",
+                              }}
+                            />
+                          </label>
+                        </div>
+                        <form
+                          onSubmit={(e) => {
+                            e.preventDefault();
+                            if (user.points < 10) return;
+                            startGame();
+                          }}
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 14,
+                            marginTop: 4,
+                          }}
+                        >
+                          <button
+                            type="submit"
+                            disabled={stake < 10 || stake > user.points}
+                            style={{
+                              padding: "14px 18px",
+                              borderRadius: 14,
+                              border: "none",
+                              background:
+                                stake < 10 || stake > user.points
+                                  ? "rgba(14,165,233,0.18)"
+                                  : "#0ea5e9",
+                              color: "white",
+                              fontWeight: 600,
+                              cursor:
+                                stake < 10 || stake > user.points
+                                  ? "not-allowed"
+                                  : "pointer",
+                              fontSize: 15,
+                            }}
+                          >
+                            Iniciar com {stake}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setShowStakeModal(false)}
+                            style={{
+                              padding: "10px 14px",
+                              borderRadius: 12,
+                              border: "1px solid rgba(255,255,255,0.06)",
+                              background: "transparent",
+                              color: "#e6eef8",
+                              fontWeight: 600,
+                              cursor: "pointer",
+                              fontSize: 13,
+                            }}
+                          >
+                            Cancelar
+                          </button>
+                          <p
+                            style={{
+                              fontSize: 11,
+                              opacity: 0.6,
+                              textAlign: "center",
+                            }}
+                          >
+                            O valor define os prêmios nos níveis 10 · 20 · 30 ·
+                            40.
+                          </p>
+                        </form>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
-          )}
-        </div>
 
-        <p style={{ marginTop: 10, fontSize: 12, opacity: 0.7 }}>
-          Dica: também funciona com a tecla <kbd>Space</kbd>. Prêmios nos níveis
-          10 · 20 · 30 · 40.
-        </p>
-      </div>
-    </main>
+            <p style={{ marginTop: 10, fontSize: 12, opacity: 0.7 }}>
+              Dica: também funciona com a tecla <kbd>Space</kbd>. Prêmios nos
+              níveis 10 · 20 · 30 · 40.
+            </p>
+          </div>
+        </main>
+      </SignedIn>
+    </>
   );
 }
 
 // ZoneOverlay agora importado de components/ZoneOverlay
 
-// Formulário inline para escolher nome
-function LoginForm({ onLogin }: { onLogin: (name: string) => void }) {
-  const [name, setName] = useState("");
-  const [touched, setTouched] = useState(false);
-  const valid = name.trim().length >= 3;
-  return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        setTouched(true);
-        if (!valid) return;
-        onLogin(name.trim());
-      }}
-      style={{ display: "flex", flexDirection: "column", gap: 12 }}
-    >
-      <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: 0.5 }}>
-          Nome do jogador
-        </span>
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onBlur={() => setTouched(true)}
-          placeholder="Ex: AstroPlayer"
-          maxLength={40}
-          style={{
-            padding: "10px 14px",
-            borderRadius: 10,
-            border: "1px solid #cbd5e1",
-            fontSize: 14,
-            outline: "none",
-          }}
-        />
-      </label>
-      {touched && !valid && (
-        <div style={{ fontSize: 12, color: "#dc2626" }}>
-          Use pelo menos 3 caracteres.
-        </div>
-      )}
-      <button
-        type="submit"
-        disabled={!valid}
-        style={{
-          padding: "12px 16px",
-          borderRadius: 12,
-          border: "none",
-          background: valid ? "#0ea5e9" : "#7dd3fc",
-          color: "white",
-          fontWeight: 600,
-          cursor: valid ? "pointer" : "not-allowed",
-        }}
-      >
-        Entrar
-      </button>
-    </form>
-  );
-}
+// (removido) LoginForm antigo substituído pelo Clerk
