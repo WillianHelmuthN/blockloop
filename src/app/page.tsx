@@ -8,24 +8,24 @@ export default function Home() {
         <div className="max-w-6xl mx-auto px-5 py-3 flex items-center justify-between">
           <div className="text-lg font-bold tracking-tight">SkillPlay</div>
           <nav className="hidden md:flex gap-6 text-sm">
-            <a
+            <Link
               href="#como-funciona"
               className="hover:text-sky-600 dark:hover:text-sky-400 transition-colors"
             >
               Como funciona
-            </a>
-            <a
+            </Link>
+            <Link
               href="#features"
               className="hover:text-sky-600 dark:hover:text-sky-400 transition-colors"
             >
               Recursos
-            </a>
-            <a
+            </Link>
+            <Link
               href="#roadmap"
               className="hover:text-sky-600 dark:hover:text-sky-400 transition-colors"
             >
               Roadmap
-            </a>
+            </Link>
             <Link
               href="/blackpool"
               className="hover:text-sky-600 dark:hover:text-sky-400 transition-colors"
@@ -59,12 +59,12 @@ export default function Home() {
           >
             Jogar Agora (MVP)
           </Link>
-          <a
+          <Link
             href="#roadmap"
             className="px-6 py-3 rounded-xl border border-black/10 dark:border-white/15 hover:border-sky-500 hover:text-sky-600 dark:hover:text-sky-300 font-medium transition-colors"
           >
             Ver Roadmap
-          </a>
+          </Link>
         </div>
         <div className="text-xs uppercase tracking-wider font-medium text-black/60 dark:text-white/50">
           MVP em validação — partilhe feedback
