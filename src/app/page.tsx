@@ -1,4 +1,5 @@
 import Link from "next/link";
+import HeroVideo from "./components/HeroVideo";
 
 export default function Home() {
   return (
@@ -42,34 +43,8 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Hero */}
-      <section className="flex flex-col items-center text-center px-6 pt-16 pb-20 gap-8">
-        <h1 className="text-4xl md:text-5xl font-extrabold max-w-3xl leading-tight tracking-tight">
-          Jogos de habilidade. Pontos reais. Competição justa.
-        </h1>
-        <p className="text-lg md:text-xl max-w-2xl text-black/70 dark:text-white/70">
-          Uma plataforma onde o resultado depende da sua destreza, não da sorte.
-          Entre, jogue a versão inicial e ajude a moldar a economia de pontos
-          que evoluirá para recompensas reais.
-        </p>
-        <div className="flex flex-col sm:flex-row gap-4">
-          <Link
-            href="/blackpool"
-            className="px-6 py-3 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-semibold shadow-md shadow-sky-600/30 transition-colors"
-          >
-            Jogar Agora (MVP)
-          </Link>
-          <Link
-            href="#roadmap"
-            className="px-6 py-3 rounded-xl border border-black/10 dark:border-white/15 hover:border-sky-500 hover:text-sky-600 dark:hover:text-sky-300 font-medium transition-colors"
-          >
-            Ver Roadmap
-          </Link>
-        </div>
-        <div className="text-xs uppercase tracking-wider font-medium text-black/60 dark:text-white/50">
-          MVP em validação — partilhe feedback
-        </div>
-      </section>
+      {/* Hero com vídeo */}
+      <HeroVideo />
 
       {/* Como funciona */}
       <section
